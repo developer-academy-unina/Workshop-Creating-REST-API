@@ -7,6 +7,8 @@ struct TodoController: RouteCollection {
         todos.get(use: index)
         todos.post(use: create)
         todos.group(":todoID") { todo in
+            todo.get(use: read)
+            todo.put(use: update)
             todo.delete(use: delete)
         }
     }
@@ -17,6 +19,23 @@ struct TodoController: RouteCollection {
 
     func create(req: Request) async throws -> Todo {
         let todo = try req.content.decode(Todo.self)
+        try await todo.save(on: req.db)
+        return todo
+    }
+
+    func read(req: Request) async throws -> Todo {
+        guard let todo = try await Todo.find(req.parameters.get("todoID"), on: req.db) else {
+            throw Abort(.notFound)
+        }
+        return todo
+    }
+
+    func update(req: Request) async throws -> Todo {
+        guard let todo = try await Todo.find(req.parameters.get("todoID"), on: req.db) else {
+            throw Abort(.notFound)
+        }
+        let input = try req.content.decode(Todo.self)
+        todo.title = input.title
         try await todo.save(on: req.db)
         return todo
     }
